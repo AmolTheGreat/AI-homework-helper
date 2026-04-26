@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AmolAI - GitHub Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root { --neon: #38bdf8; --bg: #0f172a; --card: #1e293b; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .container { background: var(--card); padding: 30px; border-radius: 20px; width: 95%; max-width: 900px; border: 1px solid #334155; }
+        .section { margin-bottom: 20px; padding: 15px; border-radius: 10px; background: #00000033; }
+        input, button { padding: 12px; border-radius: 8px; border: 1px solid #444; margin: 5px 0; font-size: 14px; }
+        input { background: #0f172a; color: white; width: 100%; box-sizing: border-box; }
+        .btn-main { background: var(--neon); color: #000; font-weight: bold; cursor: pointer; width: 100%; border: none; }
+        #output { background: #000; padding: 20px; border-radius: 10px; min-height: 200px; white-space: pre-wrap; margin-top: 15px; border-left: 4px solid var(--neon); font-size: 14px; }
+        .key-status { font-size: 12px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🚀 AmolAI Academy (GitHub Ready)</h1>
+
+    <div class="section">
+        <div class="key-status" id="status">🔴 API Key Not Set (Local Storage Empty)</div>
+        <input type="password" id="api-key" placeholder="Enter Gemini API Key...">
+        <div style="display: flex; gap: 10px;">
+            <button class="btn-main" onclick="saveKey()" style="background: #10b981; color: white;">Save Key Locally</button>
+            <button class="btn-main" onclick="deleteKey()" style="background: #ef4444; color: white;">Delete Key</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>📝 Quiz Generator</h3>
+        <input type="text" id="subject" placeholder="Subject (e.g. 10th Grade Biology)">
+        <input type="number" id="count" value="10" placeholder="Questions (1-100)">
+        <button class="btn-main" onclick="askAI('quiz')">Generate Quiz</button>
+    </div>
+
+    <div class="section">
+        <h3>📸 Vision Scan</h3>
+        <input type="file" id="image-input" accept="image/*">
+        <button class="btn-main" onclick="askAI('vision')">Scan & Solve</button>
+    </div>
+
+    <div id="output">AmolAI Output Area...</div>
+    <button id="pdf-btn" class="btn-main" onclick="downloadPDF()" style="display:none; background: #8b5cf6; color: white; margin-top: 10px;">Save as PDF</button>
+</div>
+
+<script>
+    // 1. Storage Logic (Never puts key in the GitHub code)
+    function saveKey() {
+        const key = document.getElementById('api-key').value;
+        if(key) {
+            localStorage.setItem('amol_vault_key', key);
+            checkKey();
+            alert("Key saved to your browser! You can now push this code to GitHub safely.");
+        }
+    }
+
+    function deleteKey() {
+        localStorage.removeItem('amol_vault_key');
+        checkKey();
+        alert("Key deleted.");
+    }
+
+    function checkKey() {
+        const hasKey = localStorage.getItem('amol_vault_key');
+        document.getElementById('status').innerText = hasKey ? "🟢 API Key Securely Loaded Locally" : "🔴 API Key Not Set";
+        document.getElementById('status').style.color = hasKey ? "#10b981" : "#ef4444";
+    }
+
+    // 2. AI Logic
+    async function askAI(mode) {
+        const key = localStorage.getItem('amol_vault_key');
+        if(!key) { alert("Save a key first!"); return; }
+
+        const out = document.getElementById('output');
+        out.innerText = "Thinking...";
+
+        let payload = { contents: [] };
+
+        if(mode === 'quiz') {
+            const sub = document.getElementById('subject').value;
+            const num = document.getElementById('count').value;
+            payload.contents.push({ parts: [{ text: `Generate a detailed ${num} question quiz on ${sub}. Real questions, multiple choice, answer key at end.` }] });
+        } else {
+            const file = document.getElementById('image-input').files[0];
+            if(!file) return alert("Select image!");
+            const base64 = (await toBase64(file)).split(',')[1];
+            payload.contents.push({
+                parts: [{ text: "Solve this homework perfectly." }, { inline_data: { mime_type: file.type, data: base64 } }]
+            });
+        }
+
+        try {
+            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+            out.innerText = data.candidates[0].content.parts[0].text;
+            document.getElementById('pdf-btn').style.display = "block";
+        } catch (e) {
+            out.innerText = "Error. Check your API key.";
+        }
+    }
+
+    const toBase64 = file => new Promise((r, j) => {
+        const rd = new FileReader(); rd.readAsDataURL(file);
+        rd.onload = () => r(rd.result);
+    });
+
+    function downloadPDF() {
+        html2pdf().from(document.getElementById('output')).save('AmolAI_Export.pdf');
+    }
+
+    window.onload = checkKey;
+</script>
+</body>
+</html>
